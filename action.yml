@@ -10,7 +10,7 @@ inputs:
   anthropic-api-key:
     description: >-
       Your own Anthropic API key. The judge runs on your key, in your runner,
-      and nothing is sent to Building Humane Technology.
+      and nothing is sent to Building Humane Tech.
     required: true
   model:
     description: "Anthropic model the judge runs on."

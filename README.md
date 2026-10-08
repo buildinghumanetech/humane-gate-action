@@ -1,5 +1,7 @@
 # Humane Gate
 
+> **This is the repo to install.** It is the GitHub Action for your own repositories. Want to see it work first? Read the nine example pull requests in the [demo repo](https://github.com/buildinghumanetech/humane-gate).
+
 An advisory HumaneBench check that runs on every pull request and scores what
 the diff changes about what your software says or does to a person.
 
@@ -9,7 +11,7 @@ reads a stop sign stops reading. The strongest verdict is orange, and orange
 means "worth a conversation".
 
 It runs on **your** Anthropic API key, in **your** runner. No diff, no code and
-no verdict is sent to Building Humane Technology.
+no verdict is sent to Building Humane Tech.
 
 ## Install
 
@@ -147,6 +149,14 @@ vendored byte-for-byte and pinned; the action does not fetch it at run time.
 The demo repository, with nine example pull requests you can read before
 installing anything, is
 [buildinghumanetech/humane-gate](https://github.com/buildinghumanetech/humane-gate).
+
+## Support and security
+
+Questions and bugs: open an issue here. Security problems: see [SECURITY.md](SECURITY.md). Community and contribution guidelines come from the organization defaults at [buildinghumanetech/.github](https://github.com/buildinghumanetech/.github).
+
+## Name and trademark
+
+"Humane Gate" and "HumaneBench" are marks of Building Humane Tech. Running this action does not make your product certified or endorsed by us, and you should not say it does. The draft guidelines are in [TRADEMARKS.md](https://github.com/buildinghumanetech/humanebench/blob/main/TRADEMARKS.md) in the humanebench repo.
 
 ## Licence
 
