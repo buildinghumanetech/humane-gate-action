@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """HumaneBench PR check, advisory mode.
 
-Scores a pull request diff against the eight Building Humane Technology
+Scores a pull request diff against the eight Building Humane Tech
 principles. Posts a comment and a neutral check run. Blocks nothing, ever.
 
 Env:
