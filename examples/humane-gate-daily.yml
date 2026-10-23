@@ -1,0 +1,110 @@
+# HumaneGate, once a day, over every pull request updated in the last day.
+#
+# Starts in TEST MODE: results go to this workflow's run summary only. Nothing
+# is posted on pull requests. When you trust it, set post_comments to true
+# (manual runs) or flip POST_COMMENTS below (scheduled runs).
+#
+# Copy to .github/workflows/. Needs one repository secret: ANTHROPIC_API_KEY (your own key).
+
+name: HumaneGate daily
+
+on:
+  schedule:
+    - cron: "17 15 * * *"   # 15:17 UTC, about 8:17am Pacific
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: "Look back this many hours"
+        default: "24"
+      post_comments:
+        description: "Post results on each pull request (off = summary only)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      HOURS: ${{ inputs.hours || '24' }}
+      POST_COMMENTS: ${{ inputs.post_comments || 'false' }}
+      MAX_PRS: "40"   # cost guard, about 7 cents a pull request
+    steps:
+      # Your default branch, full history. The policy is read from here, never
+      # from a pull request, so a change cannot approve itself.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+
+      # The judge itself, pinned to a release. Kept out of your tree.
+      - uses: actions/checkout@v4
+        with:
+          repository: buildinghumanetech/humane-gate-action
+          ref: v1
+          path: .humane-gate
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install --quiet -r .humane-gate/requirements.txt
+
+      - name: Judge pull requests from the last day
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: |
+          set -uo pipefail
+          since=$(date -u -d "-${HOURS} hours" +%Y-%m-%dT%H:%M:%SZ)
+          echo "## HumaneGate daily: pull requests updated since $since" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$POST_COMMENTS" != "true" ]; then
+            echo "_Test mode: nothing was posted on pull requests._" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          gh api "repos/$REPO/pulls?state=all&sort=updated&direction=desc&per_page=100" \
+            --jq ".[] | select(.updated_at >= \"$since\") | [.number, .base.sha, .head.sha, .title] | @tsv" \
+            | head -n "$MAX_PRS" > prs.tsv
+
+          if [ ! -s prs.tsv ]; then
+            echo "No pull requests updated in the window." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          failed=0
+          while IFS=$'\t' read -r num base head title; do
+            echo "::group::PR #$num $title"
+            git fetch --no-tags --quiet origin "+refs/pull/$num/head:refs/humane/pr-$num" || true
+            export PR_NUMBER="$num" BASE_SHA="$base" HEAD_SHA="$head"
+            if [ "$POST_COMMENTS" = "true" ]; then unset DRY_RUN; else export DRY_RUN=1; fi
+
+            if python .humane-gate/humanebench/judge.py > "out-$num.txt" 2>&1; then
+              {
+                echo ""
+                echo "### #$num $title"
+                if [ "$POST_COMMENTS" = "true" ]; then
+                  tail -n 1 "out-$num.txt"
+                else
+                  sed -n '/^--- comment ---$/,$p' "out-$num.txt" | tail -n +2
+                fi
+              } >> "$GITHUB_STEP_SUMMARY"
+            else
+              failed=$((failed+1))
+              echo "" >> "$GITHUB_STEP_SUMMARY"
+              echo "### #$num $title: check could not run (see log)" >> "$GITHUB_STEP_SUMMARY"
+            fi
+            cat "out-$num.txt"
+            echo "::endgroup::"
+          done < prs.tsv
+
+          # Advisory only. One broken pull request never fails the whole run.
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Judged $(wc -l < prs.tsv) pull request(s), $failed could not run." >> "$GITHUB_STEP_SUMMARY"

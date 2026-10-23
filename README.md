@@ -76,6 +76,68 @@ request.** A pull request that edits `humane-policy.toml` is judged against the
 policy already on your base branch, and the edit itself is judged on its
 merits. Otherwise a change could permit itself anything on the way in.
 
+## Your own policies
+
+Your internal policies can sit beside the numbers. Put them in the repo as
+plain documents and list them in `humane-policy.toml`:
+
+```toml
+[policy_documents]
+paths = [
+  "docs/policies/crisis-escalation.md",
+  "docs/policies/accepted.md",
+]
+```
+
+The check reads every listed document before it judges. Where one permits what
+a change does, that is not a finding, and the comment names the document that
+permits it. Missing files are skipped with a note in the log.
+
+Two rules keep this honest:
+
+- **A document cannot excuse a −1.0 on a floor principle.** That is always
+  reported, so a permissive policy cannot produce a quiet report.
+- **Write a known gap as "under review", not as permitted.** Then the check
+  keeps reporting it until it is fixed.
+
+A decision your team has made once belongs in a document, with who decided and
+why. Then it stops being flagged on every future run, and someone can revisit
+it later.
+
+## Once a day instead of every pull request
+
+To try the check before it comments on anything, run it on a schedule over the
+pull requests from the last day. [`examples/humane-gate-daily.yml`](examples/humane-gate-daily.yml)
+does that. Copy it to `.github/workflows/`, add the `ANTHROPIC_API_KEY`
+secret, and run it once by hand from the Actions tab.
+
+It starts in test mode: results go to the run summary only, and nothing is
+posted on pull requests. Turn comments on when you trust it. The same policy
+file and documents apply.
+
+## Running it from an agent
+
+If you run the check with your own agent, point the agent at the same files
+rather than telling it your decisions in chat. A chat instruction is gone next
+session; a file carries over and can be reviewed. Give it something like:
+
+> Before judging, read `humane-policy.toml` and every document listed under
+> `[policy_documents]`. Score against our numbers, not defaults. When a
+> document permits what you see, don't flag it; say which document permits it.
+> Never excuse a −1.0 on a floor principle. When I accept a finding, add it to
+> `docs/policies/accepted.md` with who decided and why, instead of remembering
+> it.
+
+If the agent can run commands, have it call the judge directly, from your
+repository root, so policy handling is the same code the action runs:
+
+```bash
+git clone --depth 1 --branch v1 https://github.com/buildinghumanetech/humane-gate-action .humane-gate
+pip install -r .humane-gate/requirements.txt
+DRY_RUN=1 BASE_SHA=<base sha> HEAD_SHA=<head sha> \
+  python .humane-gate/humanebench/judge.py
+```
+
 ## Inputs
 
 | Input | Required | Default | What |
