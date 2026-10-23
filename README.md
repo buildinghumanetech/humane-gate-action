@@ -104,12 +104,28 @@ A decision your team has made once belongs in a document, with who decided and
 why. Then it stops being flagged on every future run, and someone can revisit
 it later.
 
+Templates to start from, in [`examples/policies/`](examples/policies/):
+
+- [`crisis-escalation.md`](examples/policies/crisis-escalation.md): when you
+  give a crisis resource, when you deliberately don't, repeat limits, country
+  coverage.
+- [`accepted.md`](examples/policies/accepted.md): findings you've decided to
+  keep, with who decided and why.
+
 ## Once a day instead of every pull request
 
 To try the check before it comments on anything, run it on a schedule over the
-pull requests from the last day. [`examples/humane-gate-daily.yml`](examples/humane-gate-daily.yml)
-does that. Copy it to `.github/workflows/`, add the `ANTHROPIC_API_KEY`
-secret, and run it once by hand from the Actions tab.
+pull requests from the last day:
+
+1. Copy [`default-humane-policy.toml`](default-humane-policy.toml) to your repo
+   root as `humane-policy.toml`. Set your own numbers and floor.
+2. Copy the templates in [`examples/policies/`](examples/policies/) to
+   `docs/policies/`, fill them in, and list them under `[policy_documents]`.
+3. Copy [`examples/humane-gate-daily.yml`](examples/humane-gate-daily.yml) to
+   `.github/workflows/`.
+4. Add a repository secret named `ANTHROPIC_API_KEY`.
+5. Merge to your default branch. Policy is only read from there.
+6. In the Actions tab, open **HumaneGate daily** and run it once by hand.
 
 It starts in test mode: results go to the run summary only, and nothing is
 posted on pull requests. Turn comments on when you trust it. The same policy
